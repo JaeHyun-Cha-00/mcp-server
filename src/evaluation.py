@@ -1,31 +1,28 @@
-"""Story evaluation logic that communicates with Wolverine."""
-
-from __future__ import annotations
+"""Story evaluation logic that communicates with the Wolverine (vLLM) model."""
 
 import json
 import re
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping
+from concurrent.futures import ThreadPoolExecutor
 
 from clients import WolverineClient
 
+
+# --------------------------- Prompts --------------------------- #
 
 EVALUATION_SYSTEM_PROMPT = (
     "You are a precise literary critic. Always respond with JSON containing the keys "
     '"score" (an integer from 1 to 10) and "explanation" (a short justification).'
 )
 
-
 def build_user_prompt(story: str, category: str) -> str:
-    """Build the user prompt sent to the Wolverine endpoint."""
-
-    return (
-        "Evaluate the following story focusing strictly on the category: "
-        f"{category}.\n\nStory:\n{story}"
-    )
+    """Build the user prompt sent to the model."""
+    return f"Evaluate the following story focusing strictly on the category: {category}.\n\nStory:\n{story}"
 
 
-STORY_EVALUATION_CATEGORIES: List[str] = [
+# --------------------------- Categories --------------------------- #
+
+STORY_EVALUATION_CATEGORIES = [
     # Language Quality
     "Grammar, spelling, and punctuation quality",
     "Sentence pattern variety",
@@ -47,6 +44,8 @@ STORY_EVALUATION_CATEGORIES: List[str] = [
 ]
 
 
+# --------------------------- Data Model --------------------------- #
+
 @dataclass
 class EvaluationResult:
     """Normalized representation of an evaluation response."""
@@ -56,9 +55,7 @@ class EvaluationResult:
     explanation: str
     raw_response: str
 
-    def to_dict(self) -> Dict[str, object]:
-        """Serialize the result to a dictionary that can be returned from MCP tools."""
-
+    def to_dict(self) -> dict:
         return {
             "category": self.category,
             "score": self.score,
@@ -67,53 +64,49 @@ class EvaluationResult:
         }
 
 
+# --------------------------- Main Evaluator --------------------------- #
+
 class StoryEvaluator:
     """Evaluate stories for multiple quality categories using Wolverine."""
 
-    def __init__(
-        self,
-        client: WolverineClient,
-        *,
-        categories: Iterable[str] = STORY_EVALUATION_CATEGORIES,
-    ) -> None:
+    def __init__(self, client: WolverineClient, *, categories=STORY_EVALUATION_CATEGORIES):
         self._client = client
         self._categories = list(categories)
 
     @property
-    def categories(self) -> List[str]:
-        """All supported evaluation categories."""
-
-        return list(self._categories)
+    def categories(self) -> list[str]:
+        return self._categories
 
     def evaluate(self, story: str, category: str) -> EvaluationResult:
         """Evaluate a story for a single category."""
-
         if category not in self._categories:
-            raise ValueError(
-                f"Unknown category '{category}'. Available categories: {self._categories}"
-            )
+            raise ValueError(f"Unknown category '{category}'")
 
         user_prompt = build_user_prompt(story, category)
         raw_response = self._client.chat(
             system_prompt=EVALUATION_SYSTEM_PROMPT,
             user_prompt=user_prompt,
         )
+
         score, explanation = _parse_response(raw_response)
         return EvaluationResult(category, score, explanation, raw_response)
 
-    def evaluate_all(self, story: str) -> Mapping[str, EvaluationResult]:
-        """Evaluate a story across every configured category."""
+    def evaluate_all(self, story: str) -> dict[str, EvaluationResult]:
+        """Evaluate a story across every configured category (in parallel)."""
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(lambda c: (c, self.evaluate(story, c)), self._categories))
+        return dict(results)
 
-        return {category: self.evaluate(story, category) for category in self._categories}
 
+# --------------------------- Response Parsing --------------------------- #
 
 def _parse_response(response: str) -> tuple[float | None, str]:
-    """Parse the Wolverine response into a score and explanation."""
-
+    """Parse the model's response into a numeric score and explanation."""
     response = response.strip()
     if not response:
         return None, ""
 
+    # Try structured JSON response
     try:
         payload = json.loads(response)
         score = float(payload.get("score")) if "score" in payload else None
@@ -122,8 +115,8 @@ def _parse_response(response: str) -> tuple[float | None, str]:
     except json.JSONDecodeError:
         pass
 
-    score_match = re.search(r"\b(10|[1-9])\b", response)
-    score = float(score_match.group(1)) if score_match else None
-    explanation = response if score_match is None else response.replace(score_match.group(0), "", 1).strip()
+    # Fallback: extract numeric score from text
+    match = re.search(r"(?<!\d)(10|[1-9])(?!\d)", response)
+    score = float(match.group(1)) if match else None
+    explanation = response if not match else response.replace(match.group(0), "", 1).strip()
     return score, explanation
-
