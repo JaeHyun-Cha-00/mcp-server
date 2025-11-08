@@ -1,11 +1,11 @@
-# 🧠 MCP Story Evaluator Server
+# MCP Story Evaluator Server
 
 This project implements a **Model Context Protocol (MCP)** server that exposes AI-powered tools for story evaluation.  
 It connects to a **Wolverine vLLM instance** (an OpenAI-compatible API server) and provides structured literary feedback with numerical scores and short explanations.
 
 ---
 
-## 🚀 Features
+## Features
 
 - **Claude Integration (MCP):** Works as a local MCP tool provider for Claude Desktop.  
 - **AI-Powered Evaluation:** Uses large language models hosted on a Wolverine server.  
@@ -14,7 +14,7 @@ It connects to a **Wolverine vLLM instance** (an OpenAI-compatible API server) a
 
 ---
 
-## 🧩 Project Structure
+## Project Structure
 
 ```
 mcp-server/
@@ -27,22 +27,22 @@ mcp-server/
 
 ---
 
-## ⚙️ Installation
+## Installation
 
-### 1️⃣ Create virtual environment
+### Create virtual environment
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-### 2️⃣ Install dependencies
+### Install dependencies
 ```bash
 pip install fastmcp openai datasets
 ```
 
 ---
 
-## 🧠 Configuration
+## Configuration
 
 All connection and model settings are defined directly in **`config.py`**.  
 You don’t need to set any environment variables manually.
@@ -55,7 +55,7 @@ MODEL = "LLM_MODEL"
 
 ---
 
-## 🧰 Running the MCP Server
+## Running the MCP Server
 
 Run the server directly with Python:
 ```bash
@@ -72,7 +72,7 @@ Once running, the server exposes three MCP tools:
 
 ---
 
-## 💬 Using with Claude Desktop
+## Using with Claude Desktop
 
 ### Step 1. Download Claude Desktop
 
@@ -84,7 +84,7 @@ After adding, Claude will automatically detect and use the `story-evaluator` MCP
 
 ---
 
-## 🧪 Example Usage
+## Example Usage
 
 **Claude prompt:**
 > Use the `story-evaluator` tool to evaluate the following story across all categories:  
