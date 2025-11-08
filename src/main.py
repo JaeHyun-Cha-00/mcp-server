@@ -13,19 +13,23 @@ _evaluator = StoryEvaluator(_client)
 @server.tool()
 def list_categories() -> list[str]:
     """Return all supported evaluation categories."""
+    print("[INFO] Tool called: list_categories")
     return _evaluator.categories
 
 
 @server.tool()
 def evaluate_single(story: str, category: str) -> dict:
-    """Evaluate a single story for a given category (1–10 scale)."""
-    return _evaluator.evaluate(story, category).to_dict()
+    print(f"[INFO] Tool called: evaluate_single (category='{category}')")
+    result = _evaluator.evaluate(story, category)
+    print("[INFO] Response received from vLLM.")
+    return result.to_dict()
 
 
 @server.tool()
 def evaluate_all(story: str) -> dict[str, dict]:
-    """Evaluate the given story across all predefined categories."""
+    print("[INFO] Tool called: evaluate_all")
     results = _evaluator.evaluate_all(story)
+    print("[INFO] Response received from vLLM (all categories).")
     return {cat: res.to_dict() for cat, res in results.items()}
 
 

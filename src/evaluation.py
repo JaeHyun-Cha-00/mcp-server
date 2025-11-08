@@ -11,7 +11,7 @@ from clients import WolverineClient
 # --------------------------- Prompts --------------------------- #
 
 EVALUATION_SYSTEM_PROMPT = (
-    "You are a precise literary critic. Always respond with JSON containing the keys "
+    "You are a literary critic. Always respond with JSON containing the keys "
     '"score" (an integer from 1 to 10) and "explanation" (a short justification).'
 )
 
